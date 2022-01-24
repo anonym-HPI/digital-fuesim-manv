@@ -1,4 +1,7 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsIn, IsNumber } from 'class-validator';
+
+const logicalOperatorOptions = ['and', 'or'] as const;
+type LogicalOperator = typeof logicalOperatorOptions[number];
 
 export class CanCaterFor {
     @IsNumber()
@@ -10,15 +13,14 @@ export class CanCaterFor {
     @IsNumber()
     public green: number;
 
-    // TODO
-    @IsString()
-    public logicalOperator: 'and' | 'or';
+    @IsIn(logicalOperatorOptions)
+    public logicalOperator: LogicalOperator;
 
     public constructor(
         red: number,
         yellow: number,
         green: number,
-        logicalOperator: 'and' | 'or'
+        logicalOperator: LogicalOperator
     ) {
         this.red = red;
         this.yellow = yellow;
