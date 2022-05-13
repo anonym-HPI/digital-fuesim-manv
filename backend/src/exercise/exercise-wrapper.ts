@@ -1,17 +1,21 @@
-import type { ExerciseAction, Role, UUID } from 'digital-fuesim-manv-shared';
+import type { ExerciseAction, UUID, Role } from 'digital-fuesim-manv-shared';
 import {
     uuid,
     ExerciseState,
     reduceExerciseState,
+    validateExerciseState,
     validateExerciseAction,
 } from 'digital-fuesim-manv-shared';
 import type { EntityManager } from 'typeorm';
-import { IsNull } from 'typeorm';
+import { IsNull, LessThan } from 'typeorm';
 import { ValidationErrorWrapper } from '../utils/validation-error-wrapper';
 import { ExerciseWrapperEntity } from '../database/entities/exercise-wrapper.entity';
 import { NormalType } from '../database/normal-type';
 import type { ServiceProvider } from '../database/services/service-provider';
 import type { CreateActionEmitter } from '../database/services/action-emitter.service';
+import { migrations } from '../database/state-migrations/migrations';
+import { RestoreError } from '../utils/restore-error';
+import { UserReadableIdGenerator } from '../utils/user-readable-id-generator';
 import { ActionWrapper } from './action-wrapper';
 import type { ClientWrapper } from './client-wrapper';
 import { exerciseMap } from './exercise-map';
@@ -22,6 +26,12 @@ export class ExerciseWrapper extends NormalType<
     ExerciseWrapper,
     ExerciseWrapperEntity
 > {
+    /**
+     * Indicates how many actions have to pass before the state is saved in its entirety.
+     */
+    // TODO: Check whether this is a good threshold.
+    private static readonly fullExerciseSaveInterval = 10;
+
     async asEntity(
         save: boolean,
         entityManager?: EntityManager
@@ -39,6 +49,7 @@ export class ExerciseWrapper extends NormalType<
             entity.participantId = this.participantId;
             entity.tickCounter = this.tickCounter;
             entity.trainerId = this.trainerId;
+            entity.stateVersion = this.stateVersion;
 
             if (save) {
                 if (existed) {
@@ -47,6 +58,7 @@ export class ExerciseWrapper extends NormalType<
                         participantId: entity.participantId,
                         tickCounter: entity.tickCounter,
                         trainerId: entity.trainerId,
+                        stateVersion: entity.stateVersion,
                     };
                     entity = await this.services.exerciseWrapperService.update(
                         entity.id,
@@ -59,6 +71,7 @@ export class ExerciseWrapper extends NormalType<
                         participantId: entity.participantId,
                         tickCounter: entity.tickCounter,
                         trainerId: entity.trainerId,
+                        stateVersion: entity.stateVersion,
                     };
                     entity = await this.services.exerciseWrapperService.create(
                         creatable,
@@ -102,6 +115,7 @@ export class ExerciseWrapper extends NormalType<
                 entity.trainerId,
                 actionsInWrapper,
                 services,
+                entity.stateVersion,
                 JSON.parse(entity.initialStateString) as ExerciseState,
                 (
                     await services.actionEmitterService.findOne(
@@ -183,14 +197,14 @@ export class ExerciseWrapper extends NormalType<
 
     private readonly clients = new Set<ClientWrapper>();
 
-    private currentState = this.initialState;
+    private currentState: ExerciseState;
 
     /**
      * This only contains some snapshots of the state, not every state in between.
      */
     private readonly stateHistory: ExerciseState[] = [];
 
-    private readonly actionHistory: ActionWrapper[] = [];
+    private readonly actionHistory: ActionWrapper[];
 
     /**
      * Be very careful when using this. - Use {@link create} instead for most use cases.
@@ -201,12 +215,14 @@ export class ExerciseWrapper extends NormalType<
         public readonly trainerId: string,
         actions: ActionWrapper[],
         services: ServiceProvider,
+        private readonly stateVersion: number,
         private readonly initialState = ExerciseState.create(),
         emitterUUID: UUID | undefined = undefined
     ) {
         super(services);
         this.actionHistory = actions;
         this.emitterUUID = emitterUUID ?? this.emitterUUID;
+        this.currentState = this.initialState;
     }
 
     static async create(
@@ -220,6 +236,7 @@ export class ExerciseWrapper extends NormalType<
             trainerId,
             [],
             services,
+            ExerciseState.currentStateVersion,
             initialState
         );
         await exercise.save();
@@ -233,6 +250,88 @@ export class ExerciseWrapper extends NormalType<
         );
 
         return exercise;
+    }
+
+    private async restore(): Promise<void> {
+        if (this.stateVersion !== ExerciseState.currentStateVersion) {
+            throw new RestoreError(
+                `The exercise was created with an incompatible version of the state (got version ${this.stateVersion}, required version ${ExerciseState.currentStateVersion})`,
+                this.id!
+            );
+        }
+        this.validateInitialState();
+        await this.restoreState();
+    }
+
+    private async restoreState() {
+        this.stateHistory.splice(0, this.stateHistory.length);
+        this.currentState = this.initialState;
+        this.actionHistory.forEach((action, index) => {
+            this.validateAction(action.action);
+            const state = reduceExerciseState(this.currentState, action.action);
+            if (index % ExerciseWrapper.fullExerciseSaveInterval === 0) {
+                this.stateHistory.push(state);
+            }
+            this.currentState = state;
+        });
+        // Pause exercise
+        if (this.currentState.statusHistory.at(-1)?.status === 'running')
+            await this.reduce(
+                {
+                    type: '[Exercise] Pause',
+                    timestamp: Date.now(),
+                },
+                { emitterId: this.emitterUUID }
+            );
+        // Remove all clients from state
+        Object.values(this.currentState.clients).forEach(async (client) => {
+            const removeClientAction: ExerciseAction = {
+                type: '[Client] Remove client',
+                clientId: client.id,
+            };
+            await this.reduce(removeClientAction, {
+                emitterId: this.emitterUUID,
+            });
+        });
+    }
+
+    static async restoreAllExercises(
+        services: ServiceProvider
+    ): Promise<ExerciseWrapper[]> {
+        const outdatedExercises = await services.exerciseWrapperService.findAll(
+            {
+                where: {
+                    stateVersion: LessThan(ExerciseState.currentStateVersion),
+                },
+            }
+        );
+        outdatedExercises.forEach(async (exercise) => {
+            do {
+                // eslint-disable-next-line no-await-in-loop
+                await migrations[++exercise.stateVersion](exercise.id);
+            } while (
+                exercise.stateVersion !== ExerciseState.currentStateVersion
+            );
+        });
+
+        const exercises = await Promise.all(
+            (
+                await services.exerciseWrapperService.findAll()
+            ).map(async (exercise) =>
+                ExerciseWrapper.createFromEntity(exercise, services)
+            )
+        );
+        await Promise.all(
+            exercises.map(async (exercise) => exercise.restore())
+        );
+        exercises.forEach((exercise) =>
+            exerciseMap.set(exercise.participantId, exercise)
+        );
+        exercises.forEach((exercise) =>
+            exerciseMap.set(exercise.trainerId, exercise)
+        );
+        UserReadableIdGenerator.lock([...exerciseMap.keys()]);
+        return exercises;
     }
 
     /**
@@ -344,6 +443,13 @@ export class ExerciseWrapper extends NormalType<
         }
     }
 
+    private validateInitialState() {
+        const errors = validateExerciseState(this.initialState);
+        if (errors.length > 0) {
+            throw new ValidationErrorWrapper(errors);
+        }
+    }
+
     private validateAction(action: ExerciseAction) {
         const errors = validateExerciseAction(action);
         if (errors.length > 0) {
@@ -356,9 +462,12 @@ export class ExerciseWrapper extends NormalType<
         action: ExerciseAction,
         emitter: Omit<CreateActionEmitter, 'exerciseId'>
     ): Promise<void> {
-        // Only save every tenth state directly
-        // TODO: Check whether this is a good threshold.
-        if (this.actionHistory.length % 10 === 0) {
+        // Only save some states directly
+        if (
+            this.actionHistory.length %
+                ExerciseWrapper.fullExerciseSaveInterval ===
+            0
+        ) {
             this.stateHistory.push(this.currentState);
         }
         this.currentState = newExerciseState;

@@ -4,6 +4,7 @@ import { ActionEmitterEntity } from './entities/action-emitter.entity';
 import { ActionWrapperEntity } from './entities/action-wrapper.entity';
 import { ExerciseWrapperEntity } from './entities/exercise-wrapper.entity';
 import { AddExerciseAndActions1652268120769 } from './migrations/1652268120769-AddExerciseAndActions';
+import { AddStateVersion1652455837366 } from './migrations/1652455837366-AddStateVersion';
 
 export type DataSourceMode = 'baseline' | 'default' | 'testing';
 
@@ -31,7 +32,10 @@ export const createNewDataSource = (mode: DataSourceMode = 'default') => {
             ActionWrapperEntity,
             ExerciseWrapperEntity,
         ],
-        migrations: [AddExerciseAndActions1652268120769],
+        migrations: [
+            AddExerciseAndActions1652268120769,
+            AddStateVersion1652455837366,
+        ],
         logging: Config.dbLogging,
     });
 };

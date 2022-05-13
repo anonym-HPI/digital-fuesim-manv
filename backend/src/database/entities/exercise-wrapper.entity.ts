@@ -35,6 +35,10 @@ export class ExerciseWrapperEntity extends BaseEntity<
     @MaxLength(8)
     trainerId!: string;
 
+    @Column({ type: 'integer', default: 0 })
+    @IsInt()
+    stateVersion!: number;
+
     /**
      * Be very careful when using this. - Use {@link create} instead for most use cases.
      * This constructor does not guarantee a valid entity.
@@ -54,6 +58,7 @@ export class ExerciseWrapperEntity extends BaseEntity<
             participantId,
             trainerId,
             initialStateString: JSON.stringify(initialState),
+            stateVersion: ExerciseState.currentStateVersion,
         });
 
         return exercise;
