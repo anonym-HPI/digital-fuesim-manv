@@ -1,4 +1,10 @@
-import type { ExerciseAction, UUID, Role } from 'digital-fuesim-manv-shared';
+import type {
+    ExerciseAction,
+    UUID,
+    Role,
+    StateExport,
+    ExerciseIds,
+} from 'digital-fuesim-manv-shared';
 import {
     uuid,
     ExerciseState,
@@ -225,6 +231,68 @@ export class ExerciseWrapper extends NormalType<
         this.currentState = this.initialState;
     }
 
+    /**
+     * @param file A **valid** import file
+     */
+    static async importFromFile(
+        services: ServiceProvider,
+        file: StateExport,
+        exerciseIds: ExerciseIds
+    ): Promise<ExerciseWrapper> {
+        return services.dataSource.transaction(async (manager) => {
+            let exercise = new ExerciseWrapper(
+                exerciseIds.participantId,
+                exerciseIds.trainerId,
+                [],
+                services,
+                ExerciseState.currentStateVersion,
+                file.history?.initialState ?? file.currentState
+            );
+            await exercise.save(manager);
+            for (const action of file.history?.actionHistory ?? []) {
+                // Make sure to create the actions in order
+                exercise.actionHistory.push(
+                    // eslint-disable-next-line no-await-in-loop
+                    await ActionWrapper.create(
+                        action,
+                        { emitterId: exercise.emitterUUID },
+                        exercise,
+                        services,
+                        manager
+                    )
+                );
+            }
+            const exerciseEntity = await exercise.asEntity(true, manager);
+            while (
+                exercise.stateVersion !== ExerciseState.currentStateVersion
+            ) {
+                // eslint-disable-next-line no-await-in-loop
+                await migrations[++exerciseEntity.stateVersion](
+                    exerciseEntity.id
+                );
+            }
+            exercise = await ExerciseWrapper.createFromEntity(
+                await services.exerciseWrapperService.findById(
+                    exerciseEntity.id,
+                    manager
+                ),
+                services,
+                manager
+            );
+            await exercise.applyAction(
+                {
+                    type: '[Exercise] Set Participant Id',
+                    participantId: exerciseIds.participantId,
+                },
+                { emitterId: exercise.emitterUUID },
+                undefined,
+                manager
+            );
+            await exercise.restore();
+            return exercise;
+        });
+    }
+
     static async create(
         participantId: string,
         trainerId: string,
@@ -252,7 +320,7 @@ export class ExerciseWrapper extends NormalType<
         return exercise;
     }
 
-    private async restore(): Promise<void> {
+    private async restore(entityManager?: EntityManager): Promise<void> {
         if (this.stateVersion !== ExerciseState.currentStateVersion) {
             throw new RestoreError(
                 `The exercise was created with an incompatible version of the state (got version ${this.stateVersion}, required version ${ExerciseState.currentStateVersion})`,
@@ -260,10 +328,10 @@ export class ExerciseWrapper extends NormalType<
             );
         }
         this.validateInitialState();
-        await this.restoreState();
+        await this.restoreState(entityManager);
     }
 
-    private async restoreState() {
+    private async restoreState(entityManager?: EntityManager) {
         this.stateHistory.splice(0, this.stateHistory.length);
         this.currentState = this.initialState;
         this.actionHistory.forEach((action, index) => {
@@ -281,7 +349,8 @@ export class ExerciseWrapper extends NormalType<
                     type: '[Exercise] Pause',
                     timestamp: Date.now(),
                 },
-                { emitterId: this.emitterUUID }
+                { emitterId: this.emitterUUID },
+                entityManager
             );
         // Remove all clients from state
         Object.values(this.currentState.clients).forEach(async (client) => {
@@ -289,9 +358,13 @@ export class ExerciseWrapper extends NormalType<
                 type: '[Client] Remove client',
                 clientId: client.id,
             };
-            await this.reduce(removeClientAction, {
-                emitterId: this.emitterUUID,
-            });
+            await this.reduce(
+                removeClientAction,
+                {
+                    emitterId: this.emitterUUID,
+                },
+                entityManager
+            );
         });
     }
 
@@ -418,9 +491,10 @@ export class ExerciseWrapper extends NormalType<
     public async applyAction(
         action: ExerciseAction,
         emitter: Omit<CreateActionEmitter, 'exerciseId'>,
-        intermediateAction?: () => void
+        intermediateAction?: () => void,
+        entityManager?: EntityManager
     ): Promise<void> {
-        await this.reduce(action, emitter);
+        await this.reduce(action, emitter, entityManager);
         intermediateAction?.();
         this.emitAction(action);
     }
@@ -431,11 +505,12 @@ export class ExerciseWrapper extends NormalType<
      */
     private async reduce(
         action: ExerciseAction,
-        emitter: Omit<CreateActionEmitter, 'exerciseId'>
+        emitter: Omit<CreateActionEmitter, 'exerciseId'>,
+        entityManager?: EntityManager
     ): Promise<void> {
         this.validateAction(action);
         const newState = reduceExerciseState(this.currentState, action);
-        await this.setState(newState, action, emitter);
+        await this.setState(newState, action, emitter, entityManager);
         if (action.type === '[Exercise] Pause') {
             this.pause();
         } else if (action.type === '[Exercise] Start') {
@@ -460,7 +535,8 @@ export class ExerciseWrapper extends NormalType<
     private async setState(
         newExerciseState: ExerciseState,
         action: ExerciseAction,
-        emitter: Omit<CreateActionEmitter, 'exerciseId'>
+        emitter: Omit<CreateActionEmitter, 'exerciseId'>,
+        entityManager?: EntityManager
     ): Promise<void> {
         // Only save some states directly
         if (
@@ -472,7 +548,13 @@ export class ExerciseWrapper extends NormalType<
         }
         this.currentState = newExerciseState;
         this.actionHistory.push(
-            await ActionWrapper.create(action, emitter, this, this.services)
+            await ActionWrapper.create(
+                action,
+                emitter,
+                this,
+                this.services,
+                entityManager
+            )
         );
     }
 

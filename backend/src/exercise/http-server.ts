@@ -1,6 +1,7 @@
 import type { Server as HttpServer } from 'node:http';
 import cors from 'cors';
 import type * as core from 'express-serve-static-core';
+import express from 'express';
 import type { ServiceProvider } from '../database/services/service-provider';
 import {
     deleteExercise,
@@ -15,6 +16,8 @@ export class ExerciseHttpServer {
         // TODO: Temporary allow all
         app.use(cors());
 
+        app.use(express.json());
+
         // This endpoint is used to determine whether the API itself is running.
         // It should be independent from any other services that may or may not be running.
         // This is used for the Cypress CI.
@@ -25,7 +28,7 @@ export class ExerciseHttpServer {
         });
 
         app.post('/api/exercise', async (req, res) => {
-            const response = await postExercise(services);
+            const response = await postExercise(services, req.body);
             res.statusCode = response.statusCode;
             res.send(response.body);
         });

@@ -97,9 +97,10 @@ export class ActionWrapper extends NormalType<
         action: ExerciseAction,
         emitter: Omit<CreateActionEmitter, 'exerciseId'>,
         exercise: ExerciseWrapper,
-        services: ServiceProvider
+        services: ServiceProvider,
+        entityManager?: EntityManager
     ): Promise<ActionWrapper> {
-        return services.transaction(async (manager) => {
+        const create = async (manager: EntityManager) => {
             const exerciseEntity = await exercise.asEntity(true, manager);
             const entity = await ActionWrapperEntity.create(
                 action,
@@ -115,6 +116,9 @@ export class ActionWrapper extends NormalType<
             );
 
             return normal;
-        });
+        };
+        return entityManager
+            ? create(entityManager)
+            : services.transaction(create);
     }
 }

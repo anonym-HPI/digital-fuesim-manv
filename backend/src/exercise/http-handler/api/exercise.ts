@@ -1,5 +1,8 @@
+import { plainToInstance } from 'class-transformer';
+import type { ValidationError } from 'class-validator';
+import { validateSync } from 'class-validator';
 import type { ExerciseIds } from 'digital-fuesim-manv-shared';
-import { ExerciseState } from 'digital-fuesim-manv-shared';
+import { ExerciseState, StateExport } from 'digital-fuesim-manv-shared';
 import type { ServiceProvider } from '../../../database/services/service-provider';
 import { UserReadableIdGenerator } from '../../../utils/user-readable-id-generator';
 import { exerciseMap } from '../../exercise-map';
@@ -7,19 +10,68 @@ import { ExerciseWrapper } from '../../exercise-wrapper';
 import type { HttpResponse } from '../utils';
 
 export async function postExercise(
-    services: ServiceProvider
+    services: ServiceProvider,
+    importObject?: string
 ): Promise<HttpResponse<ExerciseIds>> {
     let newParticipantId: string | undefined;
     let newTrainerId: string | undefined;
     try {
         newParticipantId = UserReadableIdGenerator.generateId();
         newTrainerId = UserReadableIdGenerator.generateId(8);
-        const newExercise = await ExerciseWrapper.create(
-            newParticipantId,
-            newTrainerId,
-            services,
-            ExerciseState.create()
-        );
+        let newExercise: ExerciseWrapper;
+        if (importObject === undefined) {
+            newExercise = await ExerciseWrapper.create(
+                newParticipantId,
+                newTrainerId,
+                services,
+                ExerciseState.create()
+            );
+        } else {
+            let importInstance: StateExport;
+            try {
+                importInstance = plainToInstance(
+                    StateExport,
+                    // JSON.parse(importString) as StateExport
+                    importObject
+                );
+            } catch (e: unknown) {
+                if (e instanceof SyntaxError) {
+                    console.error(e, importObject);
+                    return {
+                        statusCode: 400,
+                        body: {
+                            message: 'Provided JSON has invalid format',
+                        },
+                    };
+                }
+                throw e;
+            }
+            const validationErrors: (ValidationError | string)[] =
+                validateSync(importInstance);
+            if (importInstance.history) {
+                validationErrors.push(
+                    ...importInstance.history
+                        .validateActions()
+                        .flatMap((value) => [...value])
+                );
+            }
+            if (validationErrors.length > 0) {
+                return {
+                    statusCode: 400,
+                    body: {
+                        message: `The validation of the import failed: ${validationErrors}`,
+                    },
+                };
+            }
+            newExercise = await ExerciseWrapper.importFromFile(
+                services,
+                importInstance,
+                {
+                    participantId: newParticipantId,
+                    trainerId: newTrainerId,
+                }
+            );
+        }
         exerciseMap.set(newParticipantId, newExercise);
         exerciseMap.set(newTrainerId, newExercise);
         return {
@@ -29,7 +81,7 @@ export async function postExercise(
                 trainerId: newTrainerId,
             },
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         if (error instanceof RangeError) {
             return {
                 statusCode: 503,

@@ -129,8 +129,18 @@ export class TrainerToolbarComponent {
             );
             switch (importInstance.type) {
                 case 'complete': {
-                    throw new Error(
-                        'Dieser Typ kann zur Zeit nicht importiert werden.'
+                    const ids = await this.apiService.importExercise(
+                        importInstance
+                    );
+                    // TODO: Better visualization
+                    this.messageService.postMessage(
+                        {
+                            color: 'success',
+                            title: 'Übung importiert',
+                            body: `Ids: Trainer: ${ids.trainerId}; Teilnehmer: ${ids.participantId}`,
+                        },
+                        'alert',
+                        null
                     );
                     break;
                 }

@@ -7,6 +7,7 @@ import type {
     ExerciseState,
     ServerToClientEvents,
     SocketResponse,
+    StateExport,
     UUID,
 } from 'digital-fuesim-manv-shared';
 import { socketIoTransports } from 'digital-fuesim-manv-shared';
@@ -207,11 +208,11 @@ export class ApiService {
         );
     }
 
-    public async importExercise(exerciseState: ExerciseState) {
+    public async importExercise(exportedState: StateExport) {
         return lastValueFrom(
             this.httpClient.post<ExerciseIds>(
-                `${httpOrigin}/api/exercise/${this.exerciseId}`,
-                exerciseState
+                `${httpOrigin}/api/exercise`,
+                exportedState
             )
         );
     }
