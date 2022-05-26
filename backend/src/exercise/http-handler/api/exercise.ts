@@ -1,7 +1,6 @@
 import { plainToInstance } from 'class-transformer';
 import type { ValidationError } from 'class-validator';
-import { validateSync } from 'class-validator';
-import type { ExerciseIds } from 'digital-fuesim-manv-shared';
+import type { ExerciseAction, ExerciseIds } from 'digital-fuesim-manv-shared';
 import { ExerciseState, StateExport } from 'digital-fuesim-manv-shared';
 import type { ServiceProvider } from '../../../database/services/service-provider';
 import { UserReadableIdGenerator } from '../../../utils/user-readable-id-generator';
@@ -32,7 +31,9 @@ export async function postExercise(
                 importInstance = plainToInstance(
                     StateExport,
                     // JSON.parse(importString) as StateExport
-                    importObject
+                    importObject,
+                    // Workaround for https://github.com/typestack/class-transformer/issues/876
+                    { enableImplicitConversion: true }
                 );
             } catch (e: unknown) {
                 if (e instanceof SyntaxError) {
@@ -47,7 +48,8 @@ export async function postExercise(
                 throw e;
             }
             const validationErrors: (ValidationError | string)[] =
-                validateSync(importInstance);
+                importInstance.validate();
+            console.log(validationErrors);
             if (importInstance.history) {
                 validationErrors.push(
                     ...importInstance.history
@@ -55,6 +57,7 @@ export async function postExercise(
                         .flatMap((value) => [...value])
                 );
             }
+            console.log(validationErrors);
             if (validationErrors.length > 0) {
                 return {
                     statusCode: 400,
@@ -127,5 +130,24 @@ export async function deleteExercise(
     return {
         statusCode: 204,
         body: undefined,
+    };
+}
+
+export function getExerciseHistory(
+    exerciseId: string
+): HttpResponse<{ history: ExerciseAction[]; initialState: ExerciseState }> {
+    const exerciseWrapper = exerciseMap.get(exerciseId);
+    if (exerciseWrapper === undefined) {
+        return {
+            statusCode: 404,
+            body: {
+                message: `Exercise with id '${exerciseId}' was not found`,
+            },
+        };
+    }
+    const history = exerciseWrapper.getHistory();
+    return {
+        statusCode: 200,
+        body: history,
     };
 }

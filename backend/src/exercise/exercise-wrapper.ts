@@ -564,4 +564,11 @@ export class ExerciseWrapper extends NormalType<
         exerciseMap.delete(this.trainerId);
         if (this.id) await this.services.exerciseWrapperService.remove(this.id);
     }
+
+    public getHistory() {
+        return {
+            history: this.actionHistory.map((action) => action.action),
+            initialState: this.initialState,
+        };
+    }
 }

@@ -1,5 +1,6 @@
-import { IsIn, IsInt, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, Min, validateSync } from 'class-validator';
 import { ExerciseState } from '../../state';
+import { defaultValidateOptions } from '../../store/validation-options';
 
 export abstract class ExportImportFile {
     public static readonly currentFileVersion = 1;
@@ -15,4 +16,8 @@ export abstract class ExportImportFile {
     @IsIn(['complete', 'partial'])
     @IsString()
     public abstract readonly type: 'complete' | 'partial';
+
+    public validate() {
+        return validateSync(this, defaultValidateOptions);
+    }
 }
