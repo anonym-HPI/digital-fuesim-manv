@@ -38,6 +38,12 @@ export class StackedBarChart {
         newLabels: string[],
         newDatasets: StackedBarChartDatasets
     ) {
+        // We need at least as many old datasets as new ones
+        if (newDatasets.length > this.chart.data.datasets.length) {
+            throw new Error(
+                `Got unexpected long newDatasets array (${newDatasets}) for old datasets: ${this.chart.data.datasets}`
+            );
+        }
         this.chart.data.labels = newLabels;
 
         // Replacing the current datasets with new ones resets the chart and causes problems https://stackoverflow.com/a/58118273
@@ -51,7 +57,7 @@ export class StackedBarChart {
                 this.chart.data.datasets[index] = newDataset;
                 return;
             }
-            const oldDataset = this.chart.data.datasets[index];
+            const oldDataset = this.chart.data.datasets[index]!;
             // Remove all properties
             Object.keys(oldDataset).forEach((key) => {
                 delete oldDataset[key as keyof ChartDataset];
