@@ -57,7 +57,9 @@ export class SimulatedParticipant {
         }
         // Unload all vehicles in the viewport
         const vehiclesInViewport = Object.values(this.getVisibleVehicles());
-        for (const vehicle of vehiclesInViewport) {
+        for (const vehicle of vehiclesInViewport.filter(
+            (_vehicle) => !this.vehicleIsUnloaded(_vehicle)
+        )) {
             // eslint-disable-next-line no-await-in-loop
             await this.apiService.proposeAction({
                 type: '[Vehicle] Unload vehicle',
@@ -98,7 +100,7 @@ export class SimulatedParticipant {
     }
 
     private async createVehicle() {
-        this.apiService.proposeAction(
+        return this.apiService.proposeAction(
             {
                 type: '[Vehicle] Add vehicle',
                 ...createVehicleParameters(
