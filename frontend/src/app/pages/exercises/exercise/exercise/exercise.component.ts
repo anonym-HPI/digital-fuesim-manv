@@ -9,6 +9,7 @@ import { saveBlob } from 'src/app/shared/functions/save-blob';
 import type { AppState } from 'src/app/state/app.state';
 import { selectParticipantId } from 'src/app/state/exercise/exercise.selectors';
 import { getStateSnapshot } from 'src/app/state/get-state-snapshot';
+import { SimulatedParticipant } from './simulated-participant';
 
 @Component({
     selector: 'app-exercise',
@@ -19,6 +20,11 @@ export class ExerciseComponent implements OnDestroy {
     private readonly destroy = new Subject<void>();
 
     public readonly participantId$ = this.store.select(selectParticipantId);
+
+    private readonly simulatedParticipant = new SimulatedParticipant(
+        this.store,
+        this.apiService
+    );
 
     constructor(
         private readonly store: Store<AppState>,

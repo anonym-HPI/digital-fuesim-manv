@@ -81,6 +81,15 @@ export class PresentExerciseHelper {
                 null
             );
         });
+        setInterval(() => {
+            const nonNullDelays = this.roundtripTimes.filter(
+                (delay) => delay !== null
+            ) as number[];
+            const average =
+                nonNullDelays.reduce((a, b) => a + b, 0) / nonNullDelays.length;
+            // average
+            console.log(`Average roundtrip time: ${Math.round(average)} ms`);
+        }, 5000);
     }
 
     /**
@@ -150,9 +159,11 @@ export class PresentExerciseHelper {
      * Proposes an action to the server
      */
     private async sendAction(action: ExerciseAction) {
+        const startTime = performance.now();
         const response = await new Promise<SocketResponse>((resolve) => {
             this.socket.emit('proposeAction', action, resolve);
         });
+        this.addRoundtripTime(performance.now() - startTime);
         if (!response.success) {
             this.messageService.postError({
                 title: 'Fehler beim Senden der Aktion',
@@ -160,6 +171,15 @@ export class PresentExerciseHelper {
             });
         }
         return response;
+    }
+
+    private readonly roundtripTimes = Array.from({
+        length: 8,
+    }).fill(null) as (number | null)[];
+
+    private addRoundtripTime(roundTripTime: number) {
+        this.roundtripTimes.shift();
+        this.roundtripTimes.push(roundTripTime);
     }
 
     private async synchronizeState() {
