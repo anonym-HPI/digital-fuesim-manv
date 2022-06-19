@@ -222,6 +222,14 @@ export class ApiService {
         );
     }
 
+    public async performanceLog() {
+        return lastValueFrom(
+            this.httpClient.get<any>(
+                `${httpOrigin}/api/exercise/${this.exerciseId}/log`
+            )
+        );
+    }
+
     public async deleteExercise(trainerId: string) {
         return lastValueFrom(
             this.httpClient.delete<undefined>(

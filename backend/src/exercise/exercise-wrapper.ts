@@ -1,35 +1,36 @@
 import type {
     ExerciseAction,
+    ExerciseIds,
     ExerciseTimeline,
     Role,
-    UUID,
     StateExport,
-    ExerciseIds,
+    UUID,
 } from 'digital-fuesim-manv-shared';
 import {
     ExerciseState,
     reduceExerciseState,
-    validateExerciseState,
     validateExerciseAction,
+    validateExerciseState,
 } from 'digital-fuesim-manv-shared';
 import type { EntityManager } from 'typeorm';
 import { LessThan } from 'typeorm';
-import { IncrementIdGenerator } from '../utils/increment-id-generator';
-import { ValidationErrorWrapper } from '../utils/validation-error-wrapper';
+import { Config } from '../config';
+import type { ActionWrapperEntity } from '../database/entities/action-wrapper.entity';
 import { ExerciseWrapperEntity } from '../database/entities/exercise-wrapper.entity';
 import { NormalType } from '../database/normal-type';
 import type { DatabaseService } from '../database/services/database-service';
-import { Config } from '../config';
-import { RestoreError } from '../utils/restore-error';
-import { UserReadableIdGenerator } from '../utils/user-readable-id-generator';
-import type { ActionWrapperEntity } from '../database/entities/action-wrapper.entity';
 import {
     migrateInDatabaseTo,
     migrateInMemoryTo,
 } from '../database/state-migrations/migrations';
+import { IncrementIdGenerator } from '../utils/increment-id-generator';
+import { RestoreError } from '../utils/restore-error';
+import { UserReadableIdGenerator } from '../utils/user-readable-id-generator';
+import { ValidationErrorWrapper } from '../utils/validation-error-wrapper';
 import { ActionWrapper } from './action-wrapper';
 import type { ClientWrapper } from './client-wrapper';
 import { exerciseMap } from './exercise-map';
+import type { ExercisePerformanceLogs } from './exerxcise-performance-logs';
 import { patientTick } from './patient-ticking';
 import { PeriodicEventHandler } from './periodic-events/periodic-event-handler';
 
@@ -42,6 +43,8 @@ export class ExerciseWrapper extends NormalType<
     public get changedSinceSave() {
         return this._changedSinceSave;
     }
+
+    public performanceLogs: ExercisePerformanceLogs = [];
 
     /**
      * Mark this exercise as being up-to-date in the database
@@ -244,7 +247,7 @@ export class ExerciseWrapper extends NormalType<
         databaseService: DatabaseService,
         private readonly stateVersion: number,
         private readonly initialState = ExerciseState.create(),
-        private currentState: ExerciseState = initialState
+        public currentState: ExerciseState = initialState
     ) {
         super(databaseService);
     }
@@ -538,9 +541,19 @@ export class ExerciseWrapper extends NormalType<
         emitterId: UUID | null,
         intermediateAction?: () => void
     ): void {
+        this.performanceLogs.push({
+            actionType: action.type,
+            exerciseTime: this.currentState.currentTime,
+            emitterId,
+        });
         this.reduce(action, emitterId);
         intermediateAction?.();
+        performance.mark('broadcastStart');
         this.emitAction(action);
+        this.performanceLogs.at(-1)!.broadcastActionTime = performance.measure(
+            'broadcastEnd',
+            'broadcastStart'
+        ).duration;
     }
 
     /**
@@ -548,8 +561,18 @@ export class ExerciseWrapper extends NormalType<
      * @throws Error if the action is not applicable on the current state
      */
     private reduce(action: ExerciseAction, emitterId: UUID | null): void {
+        performance.mark('validateStart');
         this.validateAction(action);
+        this.performanceLogs.at(-1)!.validateActionTime = performance.measure(
+            'validateEnd',
+            'validateStart'
+        ).duration;
+        performance.mark('reduceStart');
         const newState = reduceExerciseState(this.currentState, action);
+        this.performanceLogs.at(-1)!.reduceActionTime = performance.measure(
+            'reduceEnd',
+            'reduceStart'
+        ).duration;
         this.setState(newState, action, emitterId);
         if (action.type === '[Exercise] Pause') {
             this.pause();

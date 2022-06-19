@@ -7,6 +7,7 @@ import {
     deleteExercise,
     getExercise,
     getExerciseHistory,
+    getExercisePerformanceLogs,
     postExercise,
 } from './http-handler/api/exercise';
 import { getHealth } from './http-handler/api/health';
@@ -52,6 +53,12 @@ export class ExerciseHttpServer {
 
         app.get('/api/exercise/:exerciseId/history', async (req, res) => {
             const response = await getExerciseHistory(req.params.exerciseId);
+            res.statusCode = response.statusCode;
+            res.send(response.body);
+        });
+
+        app.get('/api/exercise/:exerciseId/log', async (req, res) => {
+            const response = getExercisePerformanceLogs(req.params.exerciseId);
             res.statusCode = response.statusCode;
             res.send(response.body);
         });
