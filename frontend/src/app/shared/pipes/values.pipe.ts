@@ -10,9 +10,9 @@ export class ValuesPipe implements PipeTransform {
      * @returns an array of the values in the object in their original order
      */
     // Accepts undefined and null too, to make it easier to use in templates with e.g. | async
-    transform<Value extends { [key: string]: Item } | null | undefined, Item>(
+    transform<Value extends { [key: string]: any } | null | undefined>(
         object: Value
-    ): Value extends null | undefined ? Value : Item[] {
+    ): Value extends null | undefined ? Value : Value[keyof Value][] {
         if (!object) {
             return object as any;
         }
