@@ -41,8 +41,9 @@ export class SimulatedParticipant {
 
     private tickInterval?: any;
     private readonly amountInViewport = {
-        vehicles: 12,
-        patients: 12,
+        vehicles: 20,
+        unloadedVehicles: 15,
+        patients: 10,
     };
 
     private async prepareSimulation() {
@@ -55,11 +56,19 @@ export class SimulatedParticipant {
             // eslint-disable-next-line no-await-in-loop
             await this.createVehicle();
         }
-        // Unload all vehicles in the viewport
+        // Unload x vehicles in the viewport
         const vehiclesInViewport = Object.values(this.getVisibleVehicles());
-        for (const vehicle of vehiclesInViewport.filter(
-            (_vehicle) => !this.vehicleIsUnloaded(_vehicle)
-        )) {
+        const numberOfUnloadedVehicles = vehiclesInViewport.filter((_vehicle) =>
+            this.vehicleIsUnloaded(_vehicle)
+        ).length;
+        const unloadableVehicles = vehiclesInViewport
+            .filter((_vehicle) => !this.vehicleIsUnloaded(_vehicle))
+            .slice(
+                0,
+                this.amountInViewport.unloadedVehicles -
+                    numberOfUnloadedVehicles
+            );
+        for (const vehicle of unloadableVehicles) {
             // eslint-disable-next-line no-await-in-loop
             await this.apiService.proposeAction({
                 type: '[Vehicle] Unload vehicle',
@@ -127,47 +136,66 @@ export class SimulatedParticipant {
     }
 
     private async tick() {
-        // Decide whether to make any action at all:
-        if (Math.random() < 0.5) {
-            return;
-        }
         const randomNumber = Math.random();
-        if (randomNumber < 0.3) {
-            await this.apiService.proposeAction({
-                type: '[Vehicle] Move vehicle',
-                vehicleId: this.getRandomElement(
-                    Object.keys(this.getVisibleVehicles())
-                ),
-                targetPosition: this.getRandomPosition(),
-            });
-        } else if (randomNumber < 0.5) {
-            await this.apiService.proposeAction({
-                type: '[Personnel] Move personnel',
-                personnelId: this.getRandomElement(
-                    Object.keys(this.getVisiblePersonnel())
-                ),
-                // TODO: maybe near a patient?
-                targetPosition: this.getRandomPosition(),
-            });
-        } else if (randomNumber < 0.7) {
-            await this.apiService.proposeAction({
-                type: '[Material] Move material',
-                materialId: this.getRandomElement(
-                    Object.keys(this.getVisibleMaterials())
-                ),
-                // TODO: maybe near a patient?
-                targetPosition: this.getRandomPosition(),
-            });
-        } else {
-            await this.apiService.proposeAction({
-                type: '[Patient] Move patient',
-                patientId: this.getRandomElement(
-                    Object.keys(this.getVisiblePatients())
-                ),
-                targetPosition: this.getRandomPosition(),
-            });
+        let previousActionProbability = 0;
+        for (const { probability, sendAction } of this.randomActionMap) {
+            previousActionProbability += probability;
+            if (randomNumber < previousActionProbability) {
+                // eslint-disable-next-line no-await-in-loop
+                await sendAction();
+                break;
+            }
         }
     }
+
+    private readonly randomActionMap = [
+        {
+            probability: 0.0735,
+            sendAction: async () =>
+                this.apiService.proposeAction({
+                    type: '[Personnel] Move personnel',
+                    personnelId: this.getRandomElement(
+                        Object.keys(this.getVisiblePersonnel())
+                    ),
+                    // TODO: maybe near a patient?
+                    targetPosition: this.getRandomPosition(),
+                }),
+        },
+        {
+            probability: 0.0595,
+            sendAction: async () =>
+                this.apiService.proposeAction({
+                    type: '[Vehicle] Move vehicle',
+                    vehicleId: this.getRandomElement(
+                        Object.keys(this.getVisibleVehicles())
+                    ),
+                    targetPosition: this.getRandomPosition(),
+                }),
+        },
+        {
+            probability: 0.053,
+            sendAction: async () =>
+                this.apiService.proposeAction({
+                    type: '[Material] Move material',
+                    materialId: this.getRandomElement(
+                        Object.keys(this.getVisibleMaterials())
+                    ),
+                    // TODO: maybe near a patient?
+                    targetPosition: this.getRandomPosition(),
+                }),
+        },
+        {
+            probability: 0.022,
+            sendAction: async () =>
+                this.apiService.proposeAction({
+                    type: '[Patient] Move patient',
+                    patientId: this.getRandomElement(
+                        Object.keys(this.getVisiblePatients())
+                    ),
+                    targetPosition: this.getRandomPosition(),
+                }),
+        },
+    ];
 
     private getRandomElement<T>(elements: T[]): T {
         if (elements.length === 0) {
