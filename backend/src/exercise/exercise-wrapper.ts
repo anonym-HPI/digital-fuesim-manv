@@ -206,10 +206,12 @@ export class ExerciseWrapper extends NormalType<
      * All periodic actions of the exercise (e.g. status changes for patients) should happen here.
      */
     private readonly tick = async () => {
+        performance.mark('tick');
         const patientUpdates = patientTick(
             this.getStateSnapshot(),
             this.tickInterval
         );
+        console.log(performance.measure('tickEnd', 'tick').duration);
         const updateAction: ExerciseAction = {
             type: '[Exercise] Tick',
             patientUpdates,

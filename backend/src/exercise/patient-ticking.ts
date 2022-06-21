@@ -96,6 +96,7 @@ function getDedicatedResources(
             san: 0,
         };
     }
+    // TODO: cache this!
     const material = Object.values(state.materials).filter((thisMaterial) =>
         Object.keys(thisMaterial.assignedPatientIds).includes(patient.id)
     ).length;
