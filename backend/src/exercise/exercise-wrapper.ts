@@ -384,7 +384,12 @@ export class ExerciseWrapper extends NormalType<
             );
         }
         // Pause exercise
-        if (this.currentState.statusHistory.at(-1)?.status === 'running')
+        if (this.currentState.statusHistory.at(-1)?.status === 'running') {
+            this.performanceLogs.push({
+                actionType: '[Exercise] Pause',
+                exerciseTime: this.currentState.currentTime,
+                emitterId: this.emitterId,
+            });
             this.reduce(
                 {
                     type: '[Exercise] Pause',
@@ -392,12 +397,17 @@ export class ExerciseWrapper extends NormalType<
                 },
                 this.emitterId
             );
-        // Remove all clients from state
+        } // Remove all clients from state
         Object.values(this.currentState.clients).forEach((client) => {
             const removeClientAction: ExerciseAction = {
                 type: '[Client] Remove client',
                 clientId: client.id,
             };
+            this.performanceLogs.push({
+                actionType: '[Client] Remove client',
+                exerciseTime: this.currentState.currentTime,
+                emitterId: client.id,
+            });
             this.reduce(removeClientAction, this.emitterId);
         });
     }

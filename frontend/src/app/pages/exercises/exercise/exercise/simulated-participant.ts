@@ -41,9 +41,9 @@ export class SimulatedParticipant {
 
     private tickInterval?: any;
     private readonly amountInViewport = {
-        vehicles: 20,
-        unloadedVehicles: 15,
-        patients: 10,
+        vehicles: 30,
+        unloadedVehicles: 25,
+        patients: 20,
     };
 
     private async prepareSimulation() {

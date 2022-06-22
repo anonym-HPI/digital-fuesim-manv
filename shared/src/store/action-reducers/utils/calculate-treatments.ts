@@ -82,12 +82,12 @@ function caterFor(
 export function calculateTreatments(state: Mutable<ExerciseState>) {
     const pretriageEnabled = state.configuration.pretriageEnabled;
     const bluePatientsEnabled = state.configuration.bluePatientsEnabled;
-    const personnels = Object.values(state.personnel).filter(
-        (personnel) => personnel.position !== undefined
-    );
-    const materials = Object.values(state.materials).filter(
-        (material) => material.position !== undefined
-    );
+    // const personnels = Object.values(state.personnel).filter(
+    //     (personnel) => personnel.position !== undefined
+    // );
+    // const materials = Object.values(state.materials).filter(
+    //     (material) => material.position !== undefined
+    // );
     // // Unassign all patients as we are calculating everything from scratch.
     // personnels.forEach((personnel) => {
     //     personnel.assignedPatientIds = {};
@@ -95,18 +95,18 @@ export function calculateTreatments(state: Mutable<ExerciseState>) {
     // materials.forEach((material) => {
     //     material.assignedPatientIds = {};
     // });
-    const patients = Object.values(state.patients).filter((patient) => {
-        const visibleStatus = Patient.getVisibleStatus(
-            patient,
-            pretriageEnabled,
-            bluePatientsEnabled
-        );
-        return (
-            patient.position !== undefined &&
-            visibleStatus !== 'black' &&
-            visibleStatus !== 'blue'
-        );
-    });
+    // const patients = Object.values(state.patients).filter((patient) => {
+    //     const visibleStatus = Patient.getVisibleStatus(
+    //         patient,
+    //         pretriageEnabled,
+    //         bluePatientsEnabled
+    //     );
+    //     return (
+    //         patient.position !== undefined &&
+    //         visibleStatus !== 'black' &&
+    //         visibleStatus !== 'blue'
+    //     );
+    // });
     // patients.forEach((patient) => {
     //     patient.isBeingTreated = false;
     // });

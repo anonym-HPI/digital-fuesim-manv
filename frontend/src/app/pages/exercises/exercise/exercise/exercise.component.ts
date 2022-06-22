@@ -12,6 +12,7 @@ import { isEqual } from 'lodash';
 import { Subject } from 'rxjs';
 import { ApiService } from 'src/app/core/api.service';
 import { MessageService } from 'src/app/core/messages/message.service';
+import { performanceLogs } from 'src/app/core/present-exercise-helper';
 import { saveBlob } from 'src/app/shared/functions/save-blob';
 import type { AppState } from 'src/app/state/app.state';
 import { selectParticipantId } from 'src/app/state/exercise/exercise.selectors';
@@ -90,13 +91,23 @@ export class ExerciseComponent implements OnDestroy {
         saveBlob(blob, `exercise-state-${currentState.participantId}.json`);
     }
 
-    public async exportPerformanceLogs() {
+    public async exportServerPerformanceLogs() {
         const blob = new Blob([
             JSON.stringify(await this.apiService.performanceLog()),
         ]);
         saveBlob(
             blob,
             `exercise-log-${
+                getStateSnapshot(this.store).exercise.participantId
+            }.json`
+        );
+    }
+
+    public exportClientPerformanceLogs() {
+        const blob = new Blob([JSON.stringify(performanceLogs)]);
+        saveBlob(
+            blob,
+            `client-log-${
                 getStateSnapshot(this.store).exercise.participantId
             }.json`
         );
