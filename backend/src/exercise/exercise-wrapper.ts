@@ -206,12 +206,10 @@ export class ExerciseWrapper extends NormalType<
      * All periodic actions of the exercise (e.g. status changes for patients) should happen here.
      */
     private readonly tick = async () => {
-        performance.mark('tick');
         const patientUpdates = patientTick(
             this.getStateSnapshot(),
             this.tickInterval
         );
-        console.log(performance.measure('tickEnd', 'tick').duration);
         const updateAction: ExerciseAction = {
             type: '[Exercise] Tick',
             patientUpdates,
@@ -573,12 +571,12 @@ export class ExerciseWrapper extends NormalType<
      * @throws Error if the action is not applicable on the current state
      */
     private reduce(action: ExerciseAction, emitterId: UUID | null): void {
-        performance.mark('validateStart');
-        this.validateAction(action);
-        this.performanceLogs.at(-1)!.validateActionTime = performance.measure(
-            'validateEnd',
-            'validateStart'
-        ).duration;
+        if (emitterId !== null) {
+            performance.mark('validateStart');
+            this.validateAction(action);
+            this.performanceLogs.at(-1)!.validateActionTime =
+                performance.measure('validateEnd', 'validateStart').duration;
+        }
         performance.mark('reduceStart');
         const newState = reduceExerciseState(this.currentState, action);
         this.performanceLogs.at(-1)!.reduceActionTime = performance.measure(
