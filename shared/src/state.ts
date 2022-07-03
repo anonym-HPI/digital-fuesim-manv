@@ -25,7 +25,6 @@ import type {
     Viewport,
 } from './models';
 import { ExerciseConfiguration } from './models/exercise-configuration';
-import { StatisticsEntry } from './models/statistics-entry';
 import {
     EocLogEntry,
     StatusHistoryEntry,
@@ -97,10 +96,6 @@ export class ExerciseState {
     public readonly statusHistory: readonly StatusHistoryEntry[] = [];
     @IsString()
     public readonly participantId: string = '';
-    @IsArray()
-    @ValidateNested()
-    @Type(() => StatisticsEntry)
-    public readonly statistics: readonly StatisticsEntry[] = [];
 
     @IsObject()
     public readonly dataStructures: {

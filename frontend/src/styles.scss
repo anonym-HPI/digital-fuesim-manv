@@ -8,6 +8,11 @@
     @extend .is-invalid;
 }
 
+.dropdown-menu {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
 // OpenLayers
 
 // Prevent the control buttons from blocking the map

@@ -7,16 +7,13 @@ import {
     IsString,
     ValidateNested,
 } from 'class-validator';
-import { countBy } from 'lodash-es';
-import type { Client, Vehicle } from '../../models';
-import { Patient, Personnel, Viewport } from '../../models';
+import { Patient } from '../../models';
+import { DataStructure } from '../../models/utils/datastructure';
+import type { Personnel, Vehicle } from '../../models';
 import { StatusHistoryEntry } from '../../models/status-history-entry';
 import { getStatus } from '../../models/utils';
-import type { AreaStatistics } from '../../models/utils/area-statistics';
-import { DataStructure } from '../../models/utils/datastructure';
 import type { ExerciseState } from '../../state';
 import type { Mutable } from '../../utils';
-import { uuid } from '../../utils';
 import { PatientUpdate } from '../../utils/patient-updates';
 import type { Action, ActionReducer } from '../action-reducer';
 import { letElementArrive } from './transfer';
@@ -166,12 +163,6 @@ export namespace ExerciseActionReducers {
             // Refresh transfers
             refreshTransfer(draftState, 'vehicles', tickInterval);
             refreshTransfer(draftState, 'personnel', tickInterval);
-            // Update the statistics every ten ticks
-            // TODO: Refactor this so that `refreshTreatments` is done the same way
-            // TODO: Make this work with non-constant tickIntervals
-            if (draftState.currentTime % (10 * tickInterval) === 0) {
-                updateStatistics(draftState);
-            }
             return draftState;
         },
         rights: 'server',
@@ -207,69 +198,4 @@ function refreshTransfer(
         }
         letElementArrive(draftState, key, element.id);
     });
-}
-
-function updateStatistics(draftState: Mutable<ExerciseState>): void {
-    const exerciseStatistics = generateAreaStatistics(
-        Object.values(draftState.clients),
-        Object.values(draftState.patients),
-        Object.values(draftState.vehicles),
-        Object.values(draftState.personnel)
-    );
-
-    const viewportStatistics = Object.fromEntries(
-        Object.entries(draftState.viewports).map(([id, viewport]) => [
-            id,
-            generateAreaStatistics(
-                Object.values(draftState.clients).filter(
-                    (client) => client.viewRestrictedToViewportId === id
-                ),
-                Object.values(draftState.patients).filter(
-                    (patient) =>
-                        patient.position &&
-                        Viewport.isInViewport(viewport, patient.position)
-                ),
-                Object.values(draftState.vehicles).filter(
-                    (vehicle) =>
-                        vehicle.position &&
-                        Viewport.isInViewport(viewport, vehicle.position)
-                ),
-                Object.values(draftState.personnel).filter(
-                    (personnel) =>
-                        personnel.position &&
-                        Viewport.isInViewport(viewport, personnel.position)
-                )
-            ),
-        ])
-    );
-
-    draftState.statistics.push({
-        id: uuid(),
-        exercise: exerciseStatistics,
-        viewports: viewportStatistics,
-        exerciseTime: draftState.currentTime,
-    });
-}
-
-function generateAreaStatistics(
-    clients: Client[],
-    patients: Patient[],
-    vehicles: Vehicle[],
-    personnel: Personnel[]
-): AreaStatistics {
-    return {
-        numberOfActiveParticipants: clients.filter(
-            (client) => !client.isInWaitingRoom && client.role === 'participant'
-        ).length,
-        patients: countBy(patients, (patient) => patient.realStatus),
-        vehicles: countBy(vehicles, (vehicle) => vehicle.vehicleType),
-        personnel: countBy(
-            personnel.filter(
-                (_personnel) =>
-                    !Personnel.isInVehicle(_personnel) &&
-                    _personnel.transfer === undefined
-            ),
-            (_personnel) => _personnel.personnelType
-        ),
-    };
 }

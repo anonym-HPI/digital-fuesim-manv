@@ -68,6 +68,23 @@
                             um {{ timeConstraints.current | formatDuration }}
                         </span>
                     </button>
+                    <button
+                        ngbDropdownItem
+                        (click)="exportServerPerformanceLogs()"
+                    >
+                        <i class="bi-cloud-download me-2"> </i>
+                        Server Performance logs
+                    </button>
+                    <button
+                        ngbDropdownItem
+                        (click)="exportClientPerformanceLogs()"
+                    >
+                        <i class="bi-cloud-download me-2"> </i>
+                        Client Performance logs
+                    </button>
+                    <button ngbDropdownItem (click)="timelineBenchmark()">
+                        Timeline Benchmark
+                    </button>
                 </div>
             </div>
         </h2>

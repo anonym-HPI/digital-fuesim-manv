@@ -1,12 +1,8 @@
 import { Type } from 'class-transformer';
-import { IsDate, IsString, IsUUID } from 'class-validator';
-import { uuid, UUID, uuidValidationOptions } from '../utils';
+import { IsDate, IsString } from 'class-validator';
 import { getCreate, ImmutableDate } from './utils';
 
 export class StatusHistoryEntry {
-    @IsUUID(4, uuidValidationOptions)
-    public readonly id: UUID = uuid();
-
     // TODO
     @IsString()
     public readonly status: 'paused' | 'running';

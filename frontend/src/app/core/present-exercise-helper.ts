@@ -151,7 +151,13 @@ export class PresentExerciseHelper {
      */
     private async sendAction(action: ExerciseAction) {
         const response = await new Promise<SocketResponse>((resolve) => {
+            performance.mark('sendStart');
             this.socket.emit('proposeAction', action, resolve);
+        });
+        performanceLogs.push({
+            roundtripTime: performance.measure('sendEnd', 'sendStart').duration,
+            action: action.type,
+            exerciseTime: this.getExerciseState().currentTime,
         });
         if (!response.success) {
             this.messageService.postError({
@@ -179,3 +185,9 @@ export class PresentExerciseHelper {
         return response;
     }
 }
+
+export const performanceLogs: {
+    roundtripTime: number;
+    action: ExerciseAction['type'];
+    exerciseTime: number;
+}[] = [];

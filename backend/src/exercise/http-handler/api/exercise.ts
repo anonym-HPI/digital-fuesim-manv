@@ -5,6 +5,7 @@ import type {
 } from 'digital-fuesim-manv-shared';
 import { ExerciseState } from 'digital-fuesim-manv-shared';
 import { isEmpty } from 'lodash-es';
+import type { ExercisePerformanceLogs } from 'exercise/exerxcise-performance-logs';
 import { importExercise } from '../../../utils/import-exercise';
 import type { DatabaseService } from '../../../database/services/database-service';
 import { UserReadableIdGenerator } from '../../../utils/user-readable-id-generator';
@@ -107,5 +108,23 @@ export async function getExerciseHistory(
     return {
         statusCode: 200,
         body: await exerciseWrapper.getTimeLine(),
+    };
+}
+
+export function getExercisePerformanceLogs(
+    exerciseId: string
+): HttpResponse<ExercisePerformanceLogs> {
+    const exerciseWrapper = exerciseMap.get(exerciseId);
+    if (exerciseWrapper === undefined) {
+        return {
+            statusCode: 404,
+            body: {
+                message: `Exercise with id '${exerciseId}' was not found`,
+            },
+        };
+    }
+    return {
+        statusCode: 200,
+        body: exerciseWrapper.performanceLogs,
     };
 }

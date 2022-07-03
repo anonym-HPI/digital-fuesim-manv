@@ -4,7 +4,7 @@ import { imageSizeToPosition, Position, TransferPoint } from '../..';
 import { DataStructure } from '../../models/utils/datastructure';
 import { StartPoint } from '../../models/utils/start-points';
 import type { Mutable } from '../../utils';
-import { UUID, uuidValidationOptions } from '../../utils';
+import { cloneDeepMutable, UUID, uuidValidationOptions } from '../../utils';
 import type { Action, ActionReducer } from '../action-reducer';
 import { ReducerError } from '../reducer-error';
 import { calculateTreatments } from './utils/calculate-treatments';
@@ -199,7 +199,7 @@ export namespace TransferActionReducers {
             // Set the element to transfer
             element.position = undefined;
             element.transfer = {
-                startPoint,
+                startPoint: cloneDeepMutable(startPoint),
                 targetTransferPointId,
                 endTimeStamp: draftState.currentTime + duration,
                 isPaused: false,

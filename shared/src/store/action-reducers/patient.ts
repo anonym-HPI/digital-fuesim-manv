@@ -142,7 +142,7 @@ export namespace PatientActionReducers {
                 );
             }
 
-            patient.position = targetPosition;
+            patient.position = cloneDeepMutable(targetPosition);
 
             let patientsDataStructure = DataStructure.getDataStructureFromState(
                 draftState,
