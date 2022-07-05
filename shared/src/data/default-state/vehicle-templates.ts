@@ -68,26 +68,8 @@ const gwSanVehicleTemplate = VehicleTemplate.create(
     `GW-San-???`,
     gwSanImage,
     0,
-    ['gf', 'rettSan', 'rettSan', 'san', 'san', 'notarzt'],
+    ['gf', 'rettSan', 'notSan', 'san', 'notarzt'],
     [
-        {
-            logicalOperator: 'and',
-            green: 2,
-            yellow: 1,
-            red: 1,
-        },
-        {
-            logicalOperator: 'and',
-            green: 2,
-            yellow: 1,
-            red: 1,
-        },
-        {
-            logicalOperator: 'and',
-            green: 2,
-            yellow: 1,
-            red: 1,
-        },
         {
             logicalOperator: 'and',
             green: 2,
@@ -154,9 +136,9 @@ const rthVehicleTemplate = VehicleTemplate.create(
 );
 
 export const defaultVehicleTemplates: readonly VehicleTemplate[] = [
+    gwSanVehicleTemplate,
     rtwVehicleTemplate,
     ktwVehicleTemplate,
-    gwSanVehicleTemplate,
     nefVehicleTemplate,
     rthVehicleTemplate,
 ];

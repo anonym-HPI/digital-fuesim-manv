@@ -1,6 +1,7 @@
 import type { Store } from '@ngrx/store';
 import type { Position, Vehicle, Viewport } from 'digital-fuesim-manv-shared';
 import {
+    defaultPatientCategories,
     createVehicleParameters,
     defaultVehicleTemplates,
     Material,
@@ -41,9 +42,9 @@ export class SimulatedParticipant {
 
     private tickInterval?: any;
     private readonly amountInViewport = {
-        vehicles: 30,
-        unloadedVehicles: 25,
-        patients: 20,
+        vehicles: 300,
+        unloadedVehicles: 300,
+        patients: 600,
     };
 
     private async prepareSimulation() {
@@ -76,27 +77,12 @@ export class SimulatedParticipant {
             });
         }
         // make sure there are at least x patients in the viewport
-        const state = getStateSnapshot(this.store);
         for (
             let i = Object.keys(this.getVisiblePatients()).length;
             i < this.amountInViewport.patients;
             i++
         ) {
-            const category = state.exercise.patientCategories[0];
-            const patient = PatientTemplate.generatePatient(
-                category.patientTemplates[
-                    Math.floor(Math.random() * category.patientTemplates.length)
-                ],
-                category.name
-            );
-            // eslint-disable-next-line no-await-in-loop
-            await this.apiService.proposeAction({
-                type: '[Patient] Add patient',
-                patient: {
-                    ...patient,
-                    position: this.getRandomPosition(),
-                },
-            });
+            this.createPatient();
         }
         // every second: check whether you should move a random vehicle, personnel, patient or material
         this.tickInterval = setInterval(() => {
@@ -108,11 +94,35 @@ export class SimulatedParticipant {
         clearInterval(this.tickInterval);
     }
 
+    private async createPatient() {
+        const category =
+            defaultPatientCategories[
+                Math.floor(Math.random() * defaultPatientCategories.length)
+            ];
+        const patient = PatientTemplate.generatePatient(
+            category.patientTemplates[
+                Math.floor(Math.random() * category.patientTemplates.length)
+            ],
+            category.name
+        );
+        return this.apiService.proposeAction(
+            {
+                type: '[Patient] Add patient',
+                patient: {
+                    ...patient,
+                    position: this.getRandomPosition(),
+                },
+            },
+            false
+        );
+    }
+
     private async createVehicle() {
         return this.apiService.proposeAction(
             {
                 type: '[Vehicle] Add vehicle',
                 ...createVehicleParameters(
+                    // being a gwSan
                     defaultVehicleTemplates[0],
                     this.getRandomPosition()
                 ),
@@ -158,17 +168,6 @@ export class SimulatedParticipant {
                         Object.keys(this.getVisiblePersonnel())
                     ),
                     // TODO: maybe near a patient?
-                    targetPosition: this.getRandomPosition(),
-                }),
-        },
-        {
-            probability: 0.0595,
-            sendAction: async () =>
-                this.apiService.proposeAction({
-                    type: '[Vehicle] Move vehicle',
-                    vehicleId: this.getRandomElement(
-                        Object.keys(this.getVisibleVehicles())
-                    ),
                     targetPosition: this.getRandomPosition(),
                 }),
         },
