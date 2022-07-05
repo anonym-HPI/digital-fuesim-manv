@@ -49,22 +49,14 @@ const ktwVehicleTemplate = VehicleTemplate.create(
     ['default']
 );
 
+// having one personnel type (and have 5 material)
 const gwSanVehicleTemplate = VehicleTemplate.create(
     'GW-San',
     `GW-San-???`,
     gwSanImage,
     0,
-    ['gf', 'rettSan', 'rettSan', 'san', 'san', 'notarzt'],
-    [
-        'default',
-        'default',
-        'default',
-        'default',
-        'default',
-        'default',
-        'default',
-        'default',
-    ]
+    ['gf', 'rettSan', 'notSan', 'san', 'notarzt'],
+    ['default', 'default', 'default', 'default', 'default']
 );
 
 const nefVehicleTemplate = VehicleTemplate.create(
@@ -86,9 +78,9 @@ const rthVehicleTemplate = VehicleTemplate.create(
 );
 
 export const defaultVehicleTemplates: readonly VehicleTemplate[] = [
+    gwSanVehicleTemplate,
     rtwVehicleTemplate,
     ktwVehicleTemplate,
-    gwSanVehicleTemplate,
     nefVehicleTemplate,
     rthVehicleTemplate,
 ];
