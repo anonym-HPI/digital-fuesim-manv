@@ -52,6 +52,20 @@ export class ExerciseSettingsModalComponent {
         });
     }
 
+    public setNumberOfVehicles(numberOfVehicles: number) {
+        this.apiService.proposeAction({
+            type: '[Configuration] Set numberOfVehicles',
+            numberOfVehicles,
+        });
+    }
+
+    public setNumberOfPatients(numberOfPatients: number) {
+        this.apiService.proposeAction({
+            type: '[Configuration] Set numberOfPatients',
+            numberOfPatients,
+        });
+    }
+
     public close() {
         this.activeModal.close();
     }

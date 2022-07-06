@@ -57,6 +57,36 @@
     <div *ngIf="configuration$ | async as configuration" class="card">
         <div class="card-header">Übungsmodus</div>
         <div class="card-body">
+            Anzahl an Fahrzeugen pro Ansicht simulieren
+            <div class="form-group">
+                <!--TODO: giving error when deleting everything-->
+                <!--TODO: needs reload to take effect-->
+                <input
+                    required
+                    [min]="0"
+                    [ngModel]="configuration.numberOfVehicles"
+                    (ngModelChange)="setNumberOfVehicles($event)"
+                    class="form-control"
+                    step="1"
+                    type="number"
+                    placeholder="0"
+                />
+            </div>
+            Anzahl an Patienten pro Ansicht simulieren
+            <div class="form-group">
+                <!--TODO: giving error when deleting everything-->
+                <!--TODO: needs reload to take effect-->
+                <input
+                    required
+                    [min]="0"
+                    [ngModel]="configuration.numberOfPatients"
+                    (ngModelChange)="setNumberOfPatients($event)"
+                    class="form-control"
+                    step="1"
+                    type="number"
+                    placeholder="0"
+                />
+            </div>
             Mit Vorsichtung üben?
             <div class="form-switch">
                 <input
