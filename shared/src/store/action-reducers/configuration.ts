@@ -1,5 +1,11 @@
 import { Type } from 'class-transformer';
-import { IsBoolean, IsString, ValidateNested } from 'class-validator';
+import {
+    IsBoolean,
+    IsNumber,
+    IsString,
+    Min,
+    ValidateNested,
+} from 'class-validator';
 import { TileMapProperties } from '../../models/utils';
 import { cloneDeepMutable } from '../../utils';
 import type { Action, ActionReducer } from '../action-reducer';
@@ -29,6 +35,24 @@ export class SetBluePatientsEnabledFlagAction implements Action {
     public readonly bluePatientsEnabled!: boolean;
 }
 
+export class SetNumberOfVehiclesAction implements Action {
+    @IsString()
+    public readonly type = '[Configuration] Set numberOfVehicles';
+
+    @IsNumber()
+    @Min(0)
+    public readonly numberOfVehicles!: number;
+}
+
+export class SetNumberOfPatientsAction implements Action {
+    @IsString()
+    public readonly type = '[Configuration] Set numberOfPatients';
+
+    @IsNumber()
+    @Min(0)
+    public readonly numberOfPatients!: number;
+}
+
 export namespace ConfigurationActionReducers {
     export const setTileMapProperties: ActionReducer<SetTileMapPropertiesAction> =
         {
@@ -56,6 +80,26 @@ export namespace ConfigurationActionReducers {
             reducer: (draftState, { bluePatientsEnabled }) => {
                 draftState.configuration.bluePatientsEnabled =
                     bluePatientsEnabled;
+                return draftState;
+            },
+            rights: 'trainer',
+        };
+
+    export const setNumberOfVehicles: ActionReducer<SetNumberOfVehiclesAction> =
+        {
+            action: SetNumberOfVehiclesAction,
+            reducer: (draftState, { numberOfVehicles }) => {
+                draftState.configuration.numberOfVehicles = numberOfVehicles;
+                return draftState;
+            },
+            rights: 'trainer',
+        };
+
+    export const setNumberOfPatients: ActionReducer<SetNumberOfPatientsAction> =
+        {
+            action: SetNumberOfPatientsAction,
+            reducer: (draftState, { numberOfPatients }) => {
+                draftState.configuration.numberOfPatients = numberOfPatients;
                 return draftState;
             },
             rights: 'trainer',

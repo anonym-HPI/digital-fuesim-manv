@@ -42,9 +42,12 @@ export class SimulatedParticipant {
 
     private tickInterval?: any;
     private readonly amountInViewport = {
-        vehicles: 300,
-        unloadedVehicles: 300,
-        patients: 600,
+        vehicles: getStateSnapshot(this.store).exercise.configuration
+            .numberOfVehicles,
+        unloadedVehicles: getStateSnapshot(this.store).exercise.configuration
+            .numberOfVehicles,
+        patients: getStateSnapshot(this.store).exercise.configuration
+            .numberOfPatients,
     };
 
     private async prepareSimulation() {
