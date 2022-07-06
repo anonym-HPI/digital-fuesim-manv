@@ -1,7 +1,12 @@
 import { Component } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Store } from '@ngrx/store';
-import { cloneDeepMutable } from 'digital-fuesim-manv-shared';
+import {
+    cloneDeepMutable,
+    Position,
+    Size,
+    Viewport,
+} from 'digital-fuesim-manv-shared';
 import { ApiService } from 'src/app/core/api.service';
 import type { AppState } from 'src/app/state/app.state';
 import {
@@ -64,6 +69,36 @@ export class ExerciseSettingsModalComponent {
             type: '[Configuration] Set numberOfPatients',
             numberOfPatients,
         });
+    }
+
+    public addViewports() {
+        const size: Size = { width: 200, height: 100 };
+
+        const positions: Position[] = [
+            { x: 1461000, y: 6871000 },
+            // { x: 1462000, y: 6872000 },
+            // { x: 1462000, y: 6871000 },
+            // { x: 1463000, y: 6873000 },
+            // { x: 1463000, y: 6871000 },
+            // { x: 1464000, y: 6874000 },
+            // { x: 1464000, y: 6871000 },
+            { x: 1465000, y: 6875000 },
+            { x: 1465000, y: 6871000 },
+        ];
+
+        for (const [i, position] of positions.entries()) {
+            this.apiService.proposeAction({
+                type: '[Viewport] Add viewport',
+                viewport: Viewport.create(
+                    {
+                        x: position.x,
+                        y: position.y,
+                    },
+                    size,
+                    String(i)
+                ),
+            });
+        }
     }
 
     public close() {
