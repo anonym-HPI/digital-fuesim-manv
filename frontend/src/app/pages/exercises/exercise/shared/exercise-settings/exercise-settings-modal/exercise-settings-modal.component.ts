@@ -1,12 +1,8 @@
 import { Component } from '@angular/core';
 import { NgbActiveModal } from '@ng-bootstrap/ng-bootstrap';
 import { Store } from '@ngrx/store';
-import {
-    cloneDeepMutable,
-    Position,
-    Size,
-    Viewport,
-} from 'digital-fuesim-manv-shared';
+import type { Position, Size } from 'digital-fuesim-manv-shared';
+import { cloneDeepMutable, Viewport } from 'digital-fuesim-manv-shared';
 import { ApiService } from 'src/app/core/api.service';
 import type { AppState } from 'src/app/state/app.state';
 import {
