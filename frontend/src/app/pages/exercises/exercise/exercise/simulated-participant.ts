@@ -161,9 +161,11 @@ export class SimulatedParticipant {
         }
     }
 
+    private readonly probabilityMultiplyer = 4;
+
     private readonly randomActionMap = [
         {
-            probability: 0.0735,
+            probability: 0.0735 * this.probabilityMultiplyer,
             sendAction: async () =>
                 this.apiService.proposeAction({
                     type: '[Personnel] Move personnel',
@@ -175,7 +177,7 @@ export class SimulatedParticipant {
                 }),
         },
         {
-            probability: 0.053,
+            probability: 0.053 * this.probabilityMultiplyer,
             sendAction: async () =>
                 this.apiService.proposeAction({
                     type: '[Material] Move material',
@@ -187,7 +189,7 @@ export class SimulatedParticipant {
                 }),
         },
         {
-            probability: 0.022,
+            probability: 0.022 * this.probabilityMultiplyer,
             sendAction: async () =>
                 this.apiService.proposeAction({
                     type: '[Patient] Move patient',
