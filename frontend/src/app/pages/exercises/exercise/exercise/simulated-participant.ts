@@ -85,8 +85,10 @@ export class SimulatedParticipant {
             i < this.amountInViewport.patients;
             i++
         ) {
-            this.createPatient();
+            // eslint-disable-next-line no-await-in-loop
+            await this.createPatient();
         }
+        console.log('all Patients created');
         // every second: check whether you should move a random vehicle, personnel, patient or material
         this.tickInterval = setInterval(() => {
             this.tick();
