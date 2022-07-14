@@ -7,9 +7,9 @@ import {
     IsString,
     ValidateNested,
 } from 'class-validator';
-import { Patient } from '../../models';
 import { DataStructure } from '../../models/utils/datastructure';
 import type { Personnel, Vehicle } from '../../models';
+import { Patient } from '../../models';
 import { StatusHistoryEntry } from '../../models/status-history-entry';
 import { getStatus } from '../../models/utils';
 import type { ExerciseState } from '../../state';

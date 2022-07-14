@@ -62,19 +62,40 @@ function couldCaterFor(
         return false;
     }
     // if logicalOperator === 'and' catering capacity is calculated cumulatively
-    const canCaterForRed = catering.canCaterFor.red;
-    const canCaterForYellow =
-        catering.canCaterFor.logicalOperator === 'and'
-            ? canCaterForRed + catering.canCaterFor.yellow
-            : catering.canCaterFor.yellow;
-    const canCaterForGreen =
-        catering.canCaterFor.logicalOperator === 'and'
-            ? canCaterForYellow + catering.canCaterFor.green
-            : catering.canCaterFor.green;
+
+    // needed for cumulative calculations to calculate the number of patients treated over the normal canCaterFor that are also treated
+    const xTooManyGreens =
+        catering.canCaterFor.green < catersFor.green
+            ? catersFor.green - catering.canCaterFor.green
+            : 0;
+    const xTooManyYellows =
+        catering.canCaterFor.yellow < catersFor.yellow
+            ? catersFor.yellow - catering.canCaterFor.yellow
+            : 0;
+
+    const couldCaterForXMoreReds =
+        catering.canCaterFor.red -
+        catersFor.red +
+        (catering.canCaterFor.logicalOperator === 'and'
+            ? -xTooManyYellows - xTooManyGreens
+            : 0);
+    const couldCaterForXMoreYellows =
+        catering.canCaterFor.yellow -
+        catersFor.yellow +
+        (catering.canCaterFor.logicalOperator === 'and'
+            ? couldCaterForXMoreReds + xTooManyYellows
+            : 0);
+    const couldCaterForXMoreGreens =
+        catering.canCaterFor.green -
+        catersFor.green +
+        (catering.canCaterFor.logicalOperator === 'and'
+            ? couldCaterForXMoreYellows + xTooManyGreens
+            : 0);
+
     if (
-        (status === 'red' && canCaterForRed <= catersFor.red) ||
-        (status === 'yellow' && canCaterForYellow <= catersFor.yellow) ||
-        (status === 'green' && canCaterForGreen <= catersFor.green)
+        (status === 'red' && couldCaterForXMoreReds < 1) ||
+        (status === 'yellow' && couldCaterForXMoreYellows < 1) ||
+        (status === 'green' && couldCaterForXMoreGreens < 1)
     ) {
         // Capacity for the status of the patient is no longer there.
         return false;
@@ -163,15 +184,6 @@ function isMaterial(
     );
 }
 
-function isPositionArray(
-    positions: Position | [Position, Position]
-): positions is [Position, Position] {
-    return (
-        (positions as [Position, Position])[0] !== undefined &&
-        (positions as [Position, Position])[1] !== undefined
-    );
-}
-
 /**
  *
  * @param dataStructure being of elementType
@@ -250,8 +262,9 @@ function removeTreatmentsOfElement(
     }
 }
 
+// TODO: remove positionsArray, as startPosition is not needed anymore (new parameter: elementMoved or so is needed, as patient needs to )
 /**
- * @param positions when a patient was moved, positions needs to have old position and new position
+ * @param position when a patient was moved, positions needs to have old position and new position
  *                  when positions is undefined, it means all treatments from this element should be removed
  * @param personnelDataStructure only needed when element is a patient
  * @param materialsDataStructure only needed when element is a patient
@@ -260,14 +273,14 @@ function removeTreatmentsOfElement(
 export function calculateTreatments(
     state: Mutable<ExerciseState>,
     element: Material | Patient | Personnel,
-    positions: Position | [Position, Position] | undefined,
+    position: Position | undefined,
     patientsDataStructure?: MyRBush,
     personnelDataStructure?: MyRBush,
     materialsDataStructure?: MyRBush,
-    elementIdsToBeSkipped: UUIDSet = {}
+    elementIdsToBeSkipped: Mutable<UUIDSet> = {}
 ) {
-    // if position is undefined, the element is no longer in a position (get it?!) to be treated or treat a patient
-    if (positions === undefined) {
+    // if position is undefined, the element is no longer in a position (get it?!) to be treated or treat a patient, therefore any treatment given or received is removed
+    if (position === undefined) {
         removeTreatmentsOfElement(state, element);
         return;
     }
@@ -303,75 +316,55 @@ export function calculateTreatments(
         }
         // element is patient: calculating for every personnel and material around the patient position(s)
 
-        // if patient moved (has startPosition and targetPosition)
-        if (isPositionArray(positions)) {
-            // recalculating catering for every personnel around the position a patient was
-            calculateCateringForDataStructure(
+        // recalculating catering for every personnel that treated this patient
+        for (const personnelId of Object.keys(element.assignedPersonnelIds)) {
+            calculateCatering(
                 state,
+                getElement(state, 'personnel', personnelId),
                 pretriageEnabled,
                 bluePatientsEnabled,
-                patientsDataStructure,
-                personnelDataStructure,
-                positions[0],
-                'personnel',
-                elementIdsToBeSkipped
+                patientsDataStructure
             );
-            // calculating catering for every personnel around the position the patient is now
-            calculateCateringForDataStructure(
-                state,
-                pretriageEnabled,
-                bluePatientsEnabled,
-                patientsDataStructure,
-                personnelDataStructure,
-                positions[1],
-                'personnel',
-                elementIdsToBeSkipped
-            );
-            // recalculating catering for every material around the position a patient was
-            calculateCateringForDataStructure(
-                state,
-                pretriageEnabled,
-                bluePatientsEnabled,
-                patientsDataStructure,
-                materialsDataStructure,
-                positions[0],
-                'materials',
-                elementIdsToBeSkipped
-            );
-            // calculating catering for every material around the position the patient is now
-            calculateCateringForDataStructure(
-                state,
-                pretriageEnabled,
-                bluePatientsEnabled,
-                patientsDataStructure,
-                materialsDataStructure,
-                positions[1],
-                'materials',
-                elementIdsToBeSkipped
-            );
-        } else {
-            // else: patient was not moved and had no position before (was added/unloaded)
-            calculateCateringForDataStructure(
-                state,
-                pretriageEnabled,
-                bluePatientsEnabled,
-                patientsDataStructure,
-                personnelDataStructure,
-                positions,
-                'personnel',
-                elementIdsToBeSkipped
-            );
-            calculateCateringForDataStructure(
-                state,
-                pretriageEnabled,
-                bluePatientsEnabled,
-                patientsDataStructure,
-                materialsDataStructure,
-                positions,
-                'materials',
-                elementIdsToBeSkipped
-            );
+            // saving personnelIds of personnel that already got calculated - makes small movements of patients more efficient
+            elementIdsToBeSkipped[personnelId] = true;
         }
+
+        // recalculating catering for every material that treated this patient
+        for (const materialId of Object.keys(element.assignedMaterialIds)) {
+            calculateCatering(
+                state,
+                getElement(state, 'materials', materialId),
+                pretriageEnabled,
+                bluePatientsEnabled,
+                patientsDataStructure
+            );
+            // saving materialIds of material that already got calculated - makes small movements of patients more efficient
+            elementIdsToBeSkipped[materialId] = true;
+        }
+
+        // calculating catering for every personnel around the position the patient is now
+        calculateCateringForDataStructure(
+            state,
+            pretriageEnabled,
+            bluePatientsEnabled,
+            patientsDataStructure,
+            personnelDataStructure,
+            position,
+            'personnel',
+            elementIdsToBeSkipped
+        );
+
+        // calculating catering for every material around the position the patient is now
+        calculateCateringForDataStructure(
+            state,
+            pretriageEnabled,
+            bluePatientsEnabled,
+            patientsDataStructure,
+            materialsDataStructure,
+            position,
+            'materials',
+            elementIdsToBeSkipped
+        );
 
         /**
          * patient got new treatment and updated all possible personnel and material, therefore setting {@link needsNewCalculateTreatments} to false
@@ -543,7 +536,7 @@ function calculateCatering(
         }
 
         // treat every green patient, closest first, until the capacity is full
-        // NOTE: only treats green patients, if no yellow patients got treated by this catering when catersFor.logicalOperator is set to 'or'
+        // NOTE: only treats green patients, if no yellow or red patients got treated by this catering when catersFor.logicalOperator is set to 'or'
         for (const patient of greenPatients) {
             if (
                 !caterFor(
