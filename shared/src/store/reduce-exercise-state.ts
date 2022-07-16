@@ -8,7 +8,7 @@ import { getExerciseActionTypeDictionary } from './action-reducers';
 const exerciseActionTypeDictionary = getExerciseActionTypeDictionary();
 
 // See https://immerjs.github.io/immer/freezing for more information.
-setAutoFreeze(isDevelopment);
+// setAutoFreeze(isDevelopment);
 
 /**
  * A pure reducer function that applies the action on the state without mutating it.
