@@ -96,6 +96,46 @@ export class SimulatedParticipant {
             await this.createPatient();
         }
         console.log(`${Date()}: all Patients created`);
+
+        for (const personnelInViewport of Object.values(
+            this.getVisiblePersonnel()
+        )) {
+            // eslint-disable-next-line no-await-in-loop
+            await this.apiService.proposeAction({
+                type: '[Personnel] Move personnel',
+                personnelId: personnelInViewport.id,
+                // TODO: maybe near a patient?
+                targetPosition: this.getRandomPosition(),
+            });
+        }
+        console.log(`${Date()}: all Personnel moved ones`);
+
+        for (const materialInViewport of Object.values(
+            this.getVisibleMaterials()
+        )) {
+            // eslint-disable-next-line no-await-in-loop
+            await this.apiService.proposeAction({
+                type: '[Material] Move material',
+                materialId: materialInViewport.id,
+                // TODO: maybe near a patient?
+                targetPosition: this.getRandomPosition(),
+            });
+        }
+        console.log(`${Date()}: all Material moved ones`);
+
+        for (const patientsInViewport of Object.values(
+            this.getVisiblePatients()
+        )) {
+            // eslint-disable-next-line no-await-in-loop
+            await this.apiService.proposeAction({
+                type: '[Patient] Move patient',
+                patientId: patientsInViewport.id,
+                // TODO: maybe near a patient?
+                targetPosition: this.getRandomPosition(),
+            });
+        }
+        console.log(`${Date()}: all Patients moved ones`);
+
         console.log(
             `${Date()}: letting exercise simulation run for ${
                 this.simulationTime / 60 / 1000
