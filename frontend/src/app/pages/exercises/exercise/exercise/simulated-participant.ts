@@ -16,6 +16,7 @@ import {
     getSelectPersonnel,
     getSelectRestrictedViewport,
     getSelectVisibleElements,
+    selectExerciseStatus,
 } from 'src/app/state/exercise/exercise.selectors';
 import { getStateSnapshot } from 'src/app/state/get-state-snapshot';
 
@@ -50,7 +51,11 @@ export class SimulatedParticipant {
             .numberOfPatients,
     };
 
+    // in ms
+    private readonly simulationTime = 30 * 60 * 1000;
+
     private async prepareSimulation() {
+        console.log(`${Date()}: simulation gets prepared`);
         // make sure there are at least x vehicles in the viewport
         for (
             let i = Object.keys(this.getVisibleVehicles()).length;
@@ -60,6 +65,7 @@ export class SimulatedParticipant {
             // eslint-disable-next-line no-await-in-loop
             await this.createVehicle();
         }
+        console.log(`${Date()}: all vehicles created`);
         // Unload x vehicles in the viewport
         const vehiclesInViewport = Object.values(this.getVisibleVehicles());
         const numberOfUnloadedVehicles = vehiclesInViewport.filter((_vehicle) =>
@@ -79,6 +85,7 @@ export class SimulatedParticipant {
                 vehicleId: vehicle.id,
             });
         }
+        console.log(`${Date()}: all vehicles unloaded`);
         // make sure there are at least x patients in the viewport
         for (
             let i = Object.keys(this.getVisiblePatients()).length;
@@ -88,11 +95,40 @@ export class SimulatedParticipant {
             // eslint-disable-next-line no-await-in-loop
             await this.createPatient();
         }
-        console.log('all Patients created');
+        console.log(`${Date()}: all Patients created`);
+        console.log(
+            `${Date()}: letting exercise simulation run for ${
+                this.simulationTime / 60 / 1000
+            } minutes`
+        );
+
+        // starting exercise (and with it, the tick)
+        if (selectExerciseStatus(getStateSnapshot(this.store)) !== 'running')
+            await this.apiService.proposeAction({
+                type: '[Exercise] Start',
+                timestamp: Date.now(),
+            });
+
         // every second: check whether you should move a random vehicle, personnel, patient or material
         this.tickInterval = setInterval(() => {
             this.tick();
         }, 1000);
+
+        setTimeout(async () => {
+            this.stopSimulation();
+            console.log(`${Date()}: simulation stopped`);
+            if (
+                selectExerciseStatus(getStateSnapshot(this.store)) === 'running'
+            ) {
+                await this.apiService.proposeAction({
+                    type: '[Exercise] Pause',
+                    timestamp: Date.now(),
+                });
+                console.log(`${Date()}: and tick paused, too`);
+            } else {
+                console.log(`${Date()}: tick was already paused`);
+            }
+        }, this.simulationTime);
     }
 
     private stopSimulation() {
